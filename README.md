@@ -6,7 +6,7 @@ A tiny offline web tool that encrypts Chinese text into garbled-looking "pseudo-
 
 ## 使用 / Usage
 
-1. 打开 `加解密工具.html`（单文件，完全离线可用）
+1. 打开 `index.html`（单文件，完全离线可用；GitHub Pages 部署后即首页）
 2. 顶部切换 **🔒 加密 / 🔓 解密** 模式
 3. 输入内容 → 点击 **加密/解密** → 复制结果
 
@@ -24,5 +24,5 @@ A tiny offline web tool that encrypts Chinese text into garbled-looking "pseudo-
 
 | 文件 | 说明 |
 |------|------|
-| `加解密工具.html` | 加密 + 解密二合一页面 |
+| `index.html` | 加密 + 解密二合一页面（仓库首页） |
 | `使用说明.txt` | 详细使用说明 |
