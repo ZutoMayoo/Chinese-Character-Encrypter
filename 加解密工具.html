@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔐 中文字符加解密工具</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", system-ui, sans-serif;
+    background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%);
+    background-attachment: fixed;
+  }
+  .card {
+    width: 100%; max-width: 700px;
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, .35);
+    padding: 34px 40px 28px;
+  }
+  .head { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  .head .icon {
+    width: 52px; height: 52px; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #2b5876, #4e4376);
+    color: #fff;
+  }
+  h1 { font-size: 23px; color: #2b3a55; }
+  .sub { color: #7a88a0; font-size: 13px; margin-top: 2px; }
+
+  /* 模式切换 */
+  .tabs {
+    display: flex; gap: 6px; padding: 5px;
+    background: #eef1f6; border-radius: 12px; margin-bottom: 4px;
+  }
+  .tab {
+    flex: 1; padding: 10px 0;
+    border: none; border-radius: 9px; background: transparent;
+    font-size: 15px; font-weight: 600; color: #5a6b80; cursor: pointer;
+    transition: background .15s, color .15s, box-shadow .15s;
+  }
+  .tab.active {
+    background: #fff; color: #4e4376;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .13);
+  }
+
+  label { display: block; font-size: 13px; color: #4a5b74; margin: 14px 0 6px; font-weight: 600; }
+  textarea {
+    width: 100%; min-height: 130px; resize: vertical;
+    padding: 12px 14px;
+    font-size: 15px; line-height: 1.7;
+    border: 1px solid #d7dee6; border-radius: 10px;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  textarea:focus { border-color: #6b5aa8; box-shadow: 0 0 0 3px rgba(107, 90, 168, .18); }
+  textarea[readonly] { background: #f6f8fa; color: #2a3b4d; }
+
+  .row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  button {
+    padding: 10px 20px;
+    font-size: 15px; font-family: inherit;
+    border-radius: 10px; border: none; cursor: pointer;
+    transition: transform .05s, filter .15s;
+  }
+  button:active { transform: scale(.97); }
+  .primary {
+    background: linear-gradient(135deg, #2b5876, #4e4376);
+    color: #fff; font-weight: 600; flex: 1;
+  }
+  .primary:hover { filter: brightness(1.1); }
+  .ghost { background: #eef1f6; color: #4a5b74; }
+  .ghost:hover { background: #e3e8ef; }
+  .copy { background: #eafaf2; color: #1f7a4d; }
+  .copy:hover { background: #dcf5e7; }
+
+  #msg { margin-top: 12px; font-size: 13px; min-height: 18px; }
+  #msg.ok  { color: #1f7a4d; }
+  #msg.warn{ color: #b07a1c; }
+  #msg.err { color: #c0392b; }
+
+  .tip {
+    margin-top: 20px; padding: 12px 14px;
+    background: #f4f1fb; border: 1px solid #e1d8f2; border-radius: 10px;
+    color: #5b4a86; font-size: 12.5px; line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="head">
+      <div class="icon">🔐</div>
+      <div>
+        <h1>中文字符加解密工具</h1>
+        <div class="sub">加密 / 解密二合一，把文字变成「伪汉字」乱码</div>
+      </div>
+    </div>
+
+    <!-- 模式切换 -->
+    <div class="tabs">
+      <button id="tabEncrypt" class="tab active">🔒 加密</button>
+      <button id="tabDecrypt" class="tab">🔓 解密</button>
+    </div>
+
+    <label id="inputLabel">原文</label>
+    <textarea id="input" placeholder="在此输入要加密的内容…"></textarea>
+
+    <div class="row">
+      <button id="actionBtn" class="primary">加 密</button>
+      <button id="swapBtn" class="ghost">⇅ 结果送入输入框</button>
+      <button id="clearBtn" class="ghost">清空</button>
+    </div>
+
+    <label id="outputLabel">加密结果</label>
+    <textarea id="output" readonly placeholder="加密结果会显示在这里"></textarea>
+
+    <div class="row">
+      <button id="copyBtn" class="copy">📋 复制结果</button>
+    </div>
+
+    <div id="msg"></div>
+
+    <div class="tip">
+      ⚠️ 本工具为<b>可逆混淆</b>，不含密码保护，懂原理的人能还原，
+      请勿用于传输银行卡、密码等真正重要的机密信息。
+    </div>
+  </div>
+
+  <script>
+    /* ============================================================
+     * 中文字符可逆混淆算法（内嵌在本文件里，页面完全独立可用）
+     *
+     * 原理：把文字编码成 UTF-8 字节，逐个字节与固定密钥异或，
+     *       再叠加位置偏移，最后把每个字节映射成一个"伪汉字"
+     *       （0x4E00 起连续 256 个汉字），密文看起来就像一串乱码。
+     *       解密时逆向运算即可还原原文。
+     * ============================================================ */
+
+    /* 固定密钥串：想换一种混淆规律就改这里，加密和解密始终共用它 */
+    var CRYPTO_KEY = "中文混淆引擎 v1";
+
+    var KEY_BYTES = [];
+    (function () {
+      var bytes = new TextEncoder().encode(CRYPTO_KEY);
+      for (var i = 0; i < bytes.length; i++) KEY_BYTES.push(bytes[i]);
+    })();
+
+    var CHAR_BASE = 0x4E00;   /* 密文用 0x4E00 起连续 256 个汉字承载每个字节 */
+
+    function _utf8ToBytes(str) {
+      return Array.prototype.slice.call(new TextEncoder().encode(str));
+    }
+    function _bytesToUtf8(bytes) {
+      return new TextDecoder().decode(new Uint8Array(bytes));
+    }
+    function _byteToChar(b) {
+      return String.fromCodePoint(CHAR_BASE + b);
+    }
+    function _charToByte(c) {           /* 不在映射范围内返回 -1 */
+      var cp = c.codePointAt(0);
+      if (cp >= CHAR_BASE && cp < CHAR_BASE + 256) return cp - CHAR_BASE;
+      return -1;
+    }
+
+    function zhongwenEncrypt(text) {
+      var data = _utf8ToBytes(text);
+      var out = [];
+      for (var i = 0; i < data.length; i++) {
+        var keyByte = KEY_BYTES[i % KEY_BYTES.length];
+        var shift = (i * 7) % 256;       /* 位置偏移，让相同字符在不同位置密文不同 */
+        var b = (data[i] ^ keyByte) + shift;
+        b = b & 0xFF;
+        out.push(_byteToChar(b));
+      }
+      return out.join("");
+    }
+
+    function zhongwenDecrypt(text) {
+      var chars = Array.from(text);      /* 按码点拆开，避免代理对问题 */
+      var out = [];
+      for (var i = 0; i < chars.length; i++) {
+        var b = _charToByte(chars[i]);
+        if (b < 0) {
+          throw new Error("第 " + (i + 1) + " 个字符「" + chars[i] +
+                          "」不是合法密文，请检查输入是否正确。");
+        }
+        var keyByte = KEY_BYTES[i % KEY_BYTES.length];
+        var shift = (i * 7) % 256;
+        var orig = (b - shift + 256) % 256;   /* 先去掉位置偏移 */
+        orig = orig ^ keyByte;                /* 再异或还原 */
+        orig = orig & 0xFF;
+        out.push(orig);
+      }
+      return _bytesToUtf8(out);
+    }
+
+    /* ============================================================
+     * 页面交互
+     * ============================================================ */
+    var mode = 'encrypt';
+    var input = document.getElementById('input');
+    var output = document.getElementById('output');
+    var msg = document.getElementById('msg');
+    var actionBtn = document.getElementById('actionBtn');
+    var inputLabel = document.getElementById('inputLabel');
+    var outputLabel = document.getElementById('outputLabel');
+
+    function showMsg(text, type) {
+      msg.textContent = text;
+      msg.className = type;
+    }
+
+    function setMode(m) {
+      mode = m;
+      var isEnc = (m === 'encrypt');
+      document.getElementById('tabEncrypt').classList.toggle('active', isEnc);
+      document.getElementById('tabDecrypt').classList.toggle('active', !isEnc);
+      actionBtn.textContent = isEnc ? '加 密' : '解 密';
+      inputLabel.textContent = isEnc ? '原文' : '密文';
+      outputLabel.textContent = isEnc ? '加密结果' : '解密结果';
+      input.placeholder = isEnc ? '在此输入要加密的内容…' : '在此粘贴要解密的密文…';
+      output.placeholder = isEnc ? '加密结果会显示在这里' : '解密后的原文会显示在这里';
+      showMsg('', '');
+    }
+    document.getElementById('tabEncrypt').addEventListener('click', function () { setMode('encrypt'); });
+    document.getElementById('tabDecrypt').addEventListener('click', function () { setMode('decrypt'); });
+
+    /* 主操作按钮：根据当前模式加密或解密 */
+    actionBtn.addEventListener('click', function () {
+      var t = input.value;
+      if (!t) { showMsg(mode === 'encrypt' ? '请先输入要加密的内容' : '请先粘贴要解密的密文', 'warn'); input.focus(); return; }
+      try {
+        var result = (mode === 'encrypt') ? zhongwenEncrypt(t) : zhongwenDecrypt(t);
+        output.value = result;
+        showMsg('✓ ' + (mode === 'encrypt' ? '加密' : '解密') + '成功，共 ' + result.length + ' 个字符', 'ok');
+      } catch (e) { showMsg(e.message, 'err'); }
+    });
+
+    /* 把结果送回输入框（方便加密后立刻测解密） */
+    document.getElementById('swapBtn').addEventListener('click', function () {
+      if (!output.value) { showMsg('结果区还是空的', 'warn'); return; }
+      input.value = output.value;
+      output.value = '';
+      showMsg('已把结果送入输入框', 'ok');
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', function () {
+      input.value = ''; output.value = ''; showMsg('', '');
+      input.focus();
+    });
+
+    document.getElementById('copyBtn').addEventListener('click', function () {
+      if (!output.value) { showMsg('还没有可复制的内容', 'warn'); return; }
+      function done() { showMsg('✓ 已复制到剪贴板', 'ok'); }
+      function fail() { showMsg('复制失败，请手动选中复制', 'err'); }
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(output.value).then(done, fail);
+      } else {
+        output.select();
+        document.execCommand('copy') ? done() : fail();
+      }
+    });
+  </script>
+</body>
+</html>
